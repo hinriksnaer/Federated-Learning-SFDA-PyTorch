@@ -11,13 +11,13 @@ def args_parser():
     # federated arguments (Notation for the arguments followed from paper)
     parser.add_argument('--epochs', type=int, default=10,
                         help="number of rounds of training")
-    parser.add_argument('--num_users', type=int, default=100,
+    parser.add_argument('--num-users', type=int, default=100,
                         help="number of users: K")
     parser.add_argument('--frac', type=float, default=0.1,
                         help='the fraction of clients: C')
-    parser.add_argument('--local_ep', type=int, default=10,
+    parser.add_argument('--local-ep', type=int, default=10,
                         help="the number of local epochs: E")
-    parser.add_argument('--local_bs', type=int, default=10,
+    parser.add_argument('--local-bs', type=int, default=10,
                         help="local batch size: B")
     parser.add_argument('--lr', type=float, default=0.01,
                         help='learning rate')
@@ -25,20 +25,21 @@ def args_parser():
                         help='SGD momentum (default: 0.5)')
 
     # model arguments
+    parser.add_argument('--source-checkpoint', type=str, default=None, help='path to source checkpoint if it exists')
     parser.add_argument('--model', type=str, default='mlp', help='model name')
-    parser.add_argument('--kernel_num', type=int, default=9,
+    parser.add_argument('--kernel-num', type=int, default=9,
                         help='number of each kind of kernel')
-    parser.add_argument('--kernel_sizes', type=str, default='3,4,5',
+    parser.add_argument('--kernel-sizes', type=str, default='3,4,5',
                         help='comma-separated kernel size to \
                         use for convolution')
-    parser.add_argument('--num_channels', type=int, default=1, help="number \
+    parser.add_argument('--num-channels', type=int, default=1, help="number \
                         of channels of imgs")
     parser.add_argument('--norm', type=str, default='batch_norm',
                         help="batch_norm, layer_norm, or None")
-    parser.add_argument('--num_filters', type=int, default=32,
+    parser.add_argument('--num-filters', type=int, default=32,
                         help="number of filters for conv nets -- 32 for \
                         mini-imagenet, 64 for omiglot.")
-    parser.add_argument('--max_pool', type=str, default='True',
+    parser.add_argument('--max-pool', type=str, default='True',
                         help="Whether use max pooling rather than \
                         strided convolutions")
 
@@ -60,5 +61,6 @@ def args_parser():
                         help='rounds of early stopping')
     parser.add_argument('--verbose', type=int, default=1, help='verbose')
     parser.add_argument('--seed', type=int, default=1, help='random seed')
+    parser.add_argument('--cfg-file-path', type=str, default='../config/anchor.yml', help='path to config file')
     args = parser.parse_args()
     return args

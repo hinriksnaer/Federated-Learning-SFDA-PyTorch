@@ -15,8 +15,11 @@ from tensorboardX import SummaryWriter
 
 from options import args_parser
 from update import LocalUpdate, test_inference
-from models import MLP, CNNMnist, CNNFashion_Mnist, CNNCifar
-from utils import get_dataset, average_weights, exp_details
+from utils import get_dataset, average_weights
+from solver.anchor_solver import AnchorSolver as Solver
+from tools.prepare_data import prepare_data_Anchor
+from config.config import cfg, cfg_from_file, cfg_from_list
+from models.anchornet import get_anchornet
 
 
 if __name__ == '__main__':
@@ -27,35 +30,41 @@ if __name__ == '__main__':
     logger = SummaryWriter('../logs')
 
     args = args_parser()
-    exp_details(args)
 
-    if args.gpu_id:
-        torch.cuda.set_device(args.gpu_id)
+    bn_domain_map = {}
+
+    cfg_from_file(args.cfg_file_path)
+
+    if args.gpu:
+        torch.cuda.set_device(args.gpu)
     device = 'cuda' if args.gpu else 'cpu'
 
     # load dataset and user groups
-    train_dataset, test_dataset, user_groups = get_dataset(args)
+    # TODO train_dataset, test_dataset, user_groups = get_dataset(args)
+
+    if args.source_checkpoint is not None:
+        feature_extractor_state_dict = torch.load(args.source_checkpoint)
+    else:
+        raise NotImplementedError('No checkpoint provided, training from scratch not implemented')
 
     # BUILD MODEL
-    if args.model == 'cnn':
-        # Convolutional neural netork
-        if args.dataset == 'mnist':
-            global_model = CNNMnist(args=args)
-        elif args.dataset == 'fmnist':
-            global_model = CNNFashion_Mnist(args=args)
-        elif args.dataset == 'cifar':
-            global_model = CNNCifar(args=args)
-
-    elif args.model == 'mlp':
-        # Multi-layer preceptron
-        img_size = train_dataset[0][0].shape
-        len_in = 1
-        for x in img_size:
-            len_in *= x
-            global_model = MLP(dim_in=len_in, dim_hidden=64,
-                               dim_out=args.num_classes)
+    if args.model == 'anchornet':
+        dataloaders = prepare_data_Anchor()
+        num_domains_bn = 1
+        global_model = get_anchornet(num_classes=cfg.DATASET.NUM_CLASSES,
+                                 feature_extractor=cfg.MODEL.FEATURE_EXTRACTOR,
+                                 feature_extractor_state_dict=feature_extractor_state_dict,
+                                 frozen=[cfg.TRAIN.STOP_GRAD],
+                                 dropout_ratio=cfg.TRAIN.DROPOUT_RATIO,
+                                 fc_hidden_dims=cfg.MODEL.FC_HIDDEN_DIMS,
+                                 num_domains_bn=num_domains_bn)
     else:
         exit('Error: unrecognized model')
+
+    global_model = torch.nn.DataParallel(global_model.cuda())
+
+    train_solver = Solver(global_model, dataloaders, bn_domain_map=bn_domain_map)
+    train_solver.solve()
 
     # Set the model to train and send it to device.
     global_model.to(device)
